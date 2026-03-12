@@ -47,3 +47,10 @@ a{color:#5eead4}
   #status{text-align:left}
   .search-row{flex-direction:column}
 }
+
+
+.app-footer{max-width:900px;margin:2rem auto 1.5rem;padding:1rem;border-top:1px solid #1f2937;text-align:center;font-size:.85rem;color:var(--muted)}
+.app-footer p{margin:.35rem 0}
+.app-footer a{color:#5eead4}
+.footer-note{font-size:.75rem;opacity:.85}
+.result-item .badge{width:auto;min-width:90px;height:36px;padding:0 .75rem;border-radius:999px;font-size:.78rem;letter-spacing:.02em}

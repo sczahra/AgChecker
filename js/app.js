@@ -162,7 +162,8 @@ function appendMessage(text){
 function renderVerdict(li, verdict, ingredientsRaw){
   const badge = li.querySelector('.badge');
   badge.dataset.verdict = verdict.verdict;
-  badge.textContent = verdict.verdict[0];
+  const verdictLabels = { OK: 'SAFE', CAUTION: 'CAUTION', AVOID: 'AVOID' };
+  badge.textContent = verdictLabels[verdict.verdict] || verdict.verdict;
   const ing = li.querySelector('.ingredients');
   ing.textContent = ingredientsRaw || '(no ingredients listed)';
   const reasonsUL = li.querySelector('.reasons');

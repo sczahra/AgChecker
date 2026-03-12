@@ -2,6 +2,15 @@
 
 All notable changes to AG Checker should be recorded here.
 
+## [1.1.1] - 2026-03-12
+### Added
+- Global footer shown throughout the app with authorship, version, attribution, and a short reminder.
+
+### Changed
+- Result badges now display SAFE / CAUTION / AVOID instead of single-letter status markers.
+- Footer version text updated to 1.1.1 for this release.
+
+
 ## [1.1.0] - 2026-03-12
 ### Added
 - App version display in the header and About section.
