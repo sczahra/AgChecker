@@ -5,8 +5,11 @@ import { APP_VERSION, RELEASE_DATE } from './version.js';
 
 const ZXING_CDN = 'https://unpkg.com/@zxing/browser@0.1.5/esm/index.js';
 const SCAN_HINTS = 'EAN-13, UPC, CODE-128, ITF';
+const DISPLAY_LANGUAGE_OPTIONS = {
+  auto: 'Auto',
+  en: 'English preferred'
+};
 
-// Simple tab UI
 const tabs = document.querySelectorAll('.tab');
 const panels = document.querySelectorAll('.tabpanel');
 tabs.forEach(btn => {
@@ -23,15 +26,19 @@ const versionTextEl = document.getElementById('versionText');
 const aboutVersionEl = document.getElementById('aboutVersion');
 const dairyToggle = document.getElementById('dairyToggle');
 const strictToggle = document.getElementById('strictToggle');
+const languageSelect = document.getElementById('languageSelect');
 const searchInput = document.getElementById('searchInput');
 const searchBtn = document.getElementById('searchBtn');
 const resultsList = document.getElementById('resultsList');
 const forceRefreshBtn = document.getElementById('forceRefreshBtn');
+const sourceRegionNote = document.getElementById('sourceRegionNote');
 
 let db, rules;
 let codeReader = null;
 let controls = null;
 let activeStream = null;
+let barcodeDetector = null;
+let scanLoopToken = 0;
 
 async function init(){
   db = await openDB();
@@ -43,11 +50,16 @@ async function init(){
 
   versionTextEl.textContent = `Version ${APP_VERSION}`;
   aboutVersionEl.textContent = `Version ${APP_VERSION} · Released ${RELEASE_DATE}`;
+  if(sourceRegionNote){
+    sourceRegionNote.textContent = 'Current data source region: global Open Food Facts catalog (not region-limited).';
+  }
 
   const dairy = await db.metadata.get('dairy_sensitive');
   const strict = await db.metadata.get('strict_mode');
+  const lang = await db.metadata.get('display_language');
   dairyToggle.checked = !!(dairy && dairy.value === 'true');
   strictToggle.checked = !!(strict && strict.value === 'true');
+  languageSelect.value = (lang && DISPLAY_LANGUAGE_OPTIONS[lang.value]) ? lang.value : 'en';
 
   dairyToggle.addEventListener('change', async () => {
     await db.metadata.put({key:'dairy_sensitive', value: dairyToggle.checked ? 'true' : 'false'});
@@ -56,6 +68,10 @@ async function init(){
   strictToggle.addEventListener('change', async () => {
     await db.metadata.put({key:'strict_mode', value: strictToggle.checked ? 'true' : 'false'});
     rerateVisible();
+  });
+  languageSelect.addEventListener('change', async () => {
+    await db.metadata.put({key:'display_language', value: languageSelect.value});
+    await rerenderVisibleForLanguage();
   });
 
   searchBtn.addEventListener('click', doSearch);
@@ -78,6 +94,23 @@ function updateOnlineStatus(){
   statusEl.textContent = navigator.onLine ? 'Online' : 'Offline';
 }
 
+function currentDisplayLanguage(){
+  return languageSelect?.value || 'en';
+}
+
+async function rerenderVisibleForLanguage(){
+  const items = resultsList.querySelectorAll('.result-item[data-barcode]');
+  for(const li of items){
+    const barcode = li.dataset.barcode;
+    if(!barcode) continue;
+    const fresh = await fetchOFFByBarcode(barcode, { displayLanguage: currentDisplayLanguage() });
+    if(fresh){
+      await db.products.put(fresh);
+      replaceResult(barcode, fresh);
+    }
+  }
+}
+
 async function rerateVisible(){
   const items = resultsList.querySelectorAll('.result-item');
   const dairy = dairyToggle.checked;
@@ -87,7 +120,7 @@ async function rerateVisible(){
     const product = await db.products.get(barcode);
     if(product){
       const verdict = rateProduct(product.ingredients_raw || '', rules, { dairySensitive: dairy, strictMode: strict });
-      renderVerdict(li, verdict, product.ingredients_raw || '');
+      renderVerdict(li, verdict, product);
     }
   }
 }
@@ -97,7 +130,7 @@ async function updateOnLaunch(){
   if(!navigator.onLine || cached.length===0) return;
   let updated = 0;
   for(const p of cached.slice(0, 100)){
-    const fresh = await fetchOFFByBarcode(p.barcode);
+    const fresh = await fetchOFFByBarcode(p.barcode, { displayLanguage: currentDisplayLanguage() });
     if(fresh && fresh.last_updated !== p.last_updated){
       await db.products.put(fresh);
       updated++;
@@ -114,7 +147,7 @@ async function refreshCachedProducts(){
   const cached = await db.products.toArray();
   let updated = 0;
   for(const p of cached){
-    const fresh = await fetchOFFByBarcode(p.barcode);
+    const fresh = await fetchOFFByBarcode(p.barcode, { displayLanguage: currentDisplayLanguage() });
     if(fresh && fresh.last_updated !== p.last_updated){
       await db.products.put(fresh);
       updated++;
@@ -128,21 +161,22 @@ async function doSearch(){
   const q = (searchInput.value || '').trim();
   if(!q) return;
   clearResults();
+  const opts = { displayLanguage: currentDisplayLanguage() };
   if(/^\d{8,14}$/.test(q)){
     const local = await db.products.get(q);
     if(local){
       appendResult(local);
       if(navigator.onLine){
-        const fresh = await fetchOFFByBarcode(q);
+        const fresh = await fetchOFFByBarcode(q, opts);
         if(fresh){ await db.products.put(fresh); replaceResult(q, fresh); }
       }
     } else {
-      const fetched = await fetchOFFByBarcode(q);
+      const fetched = await fetchOFFByBarcode(q, opts);
       if(fetched){ await db.products.put(fetched); appendResult(fetched); }
       else appendMessage(`No product found for barcode ${q}.`);
     }
   } else {
-    const list = await searchOFFByText(q, 10);
+    const list = await searchOFFByText(q, 10, opts);
     if(list.length===0){ appendMessage('No matches.'); return; }
     for(const p of list){
       await db.products.put(p);
@@ -159,13 +193,29 @@ function appendMessage(text){
   resultsList.appendChild(li);
 }
 
-function renderVerdict(li, verdict, ingredientsRaw){
+function renderVerdict(li, verdict, product){
   const badge = li.querySelector('.badge');
   badge.dataset.verdict = verdict.verdict;
   const verdictLabels = { OK: 'SAFE', CAUTION: 'CAUTION', AVOID: 'AVOID' };
   badge.textContent = verdictLabels[verdict.verdict] || verdict.verdict;
   const ing = li.querySelector('.ingredients');
-  ing.textContent = ingredientsRaw || '(no ingredients listed)';
+  const ingredientsText = product.ingredients_display || product.ingredients_raw || '(no ingredients listed)';
+  ing.textContent = ingredientsText;
+
+  let languageNote = li.querySelector('.language-note');
+  if(!languageNote){
+    languageNote = document.createElement('div');
+    languageNote.className = 'language-note';
+    ing.insertAdjacentElement('afterend', languageNote);
+  }
+  if(currentDisplayLanguage() === 'en' && product.english_available === false){
+    languageNote.textContent = 'English translation was not available for this product, so the original label text is shown.';
+  } else if(currentDisplayLanguage() === 'auto' && product.ingredients_language && product.ingredients_language !== 'en'){
+    languageNote.textContent = 'Showing original label language from Open Food Facts.';
+  } else {
+    languageNote.textContent = '';
+  }
+
   const reasonsUL = li.querySelector('.reasons');
   reasonsUL.innerHTML = '';
   if(verdict.reasons && verdict.reasons.length){
@@ -196,7 +246,7 @@ function appendResult(p){
   li.querySelector('.name').textContent = p.name || '(no name)';
   li.querySelector('.sub').textContent = productSubtitle(p);
   const verdict = rateProduct(p.ingredients_raw || '', rules, { dairySensitive: dairyToggle.checked, strictMode: strictToggle.checked });
-  renderVerdict(li, verdict, p.ingredients_raw || '');
+  renderVerdict(li, verdict, p);
   resultsList.appendChild(li);
 }
 
@@ -206,7 +256,7 @@ function replaceResult(barcode, p){
   li.querySelector('.name').textContent = p.name || '(no name)';
   li.querySelector('.sub').textContent = productSubtitle(p);
   const verdict = rateProduct(p.ingredients_raw || '', rules, { dairySensitive: dairyToggle.checked, strictMode: strictToggle.checked });
-  renderVerdict(li, verdict, p.ingredients_raw || '');
+  renderVerdict(li, verdict, p);
 }
 
 const startBtn = document.getElementById('startScanBtn');
@@ -237,21 +287,27 @@ async function startScanner(){
 
     activeStream = await requestRearCameraStream();
     video.srcObject = activeStream;
-    await video.play();
+    video.setAttribute('playsinline', 'true');
+    video.muted = true;
+    await waitForVideoReady(video);
+
+    if('BarcodeDetector' in window){
+      await startNativeScanner();
+      stopBtn.disabled = false;
+      scanStatus.textContent = `Point camera at barcode (${SCAN_HINTS}).`;
+      return;
+    }
 
     const mod = await import(ZXING_CDN);
     codeReader = new mod.BrowserMultiFormatReader(undefined, {
-      delayBetweenScanAttempts: 250,
-      delayBetweenScanSuccess: 750
+      delayBetweenScanAttempts: 300,
+      delayBetweenScanSuccess: 900
     });
 
-    controls = await codeReader.decodeFromStream(activeStream, video, (result, err) => {
+    const deviceId = activeStream.getVideoTracks?.()[0]?.getSettings?.().deviceId;
+    controls = await codeReader.decodeFromVideoDevice(deviceId, video, (result, err) => {
       if(result){
-        const text = result.getText();
-        scanStatus.textContent = `Scanned: ${text}`;
-        searchInput.value = text;
-        stopScanner('Barcode captured.');
-        doSearch();
+        onBarcodeDetected(result.getText());
         return;
       }
       if(err && err.name && err.name !== 'NotFoundException'){
@@ -269,7 +325,43 @@ async function startScanner(){
   }
 }
 
+async function startNativeScanner(){
+  barcodeDetector = new window.BarcodeDetector({ formats: ['ean_13','ean_8','upc_a','upc_e','code_128','itf'] });
+  scanLoopToken += 1;
+  const token = scanLoopToken;
+
+  const scan = async () => {
+    if(token !== scanLoopToken || !barcodeDetector || !activeStream) return;
+    try{
+      if(video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA){
+        const barcodes = await barcodeDetector.detect(video);
+        if(barcodes && barcodes.length){
+          const raw = barcodes[0].rawValue || barcodes[0].displayValue;
+          if(raw){
+            onBarcodeDetected(raw);
+            return;
+          }
+        }
+      }
+    }catch(err){
+      console.warn('Native barcode detector warning:', err);
+    }
+    requestAnimationFrame(scan);
+  };
+  requestAnimationFrame(scan);
+}
+
+function onBarcodeDetected(text){
+  scanStatus.textContent = `Scanned: ${text}`;
+  searchInput.value = text;
+  stopScanner('Barcode captured.');
+  doSearch();
+}
+
 function stopScanner(message=''){
+  scanLoopToken += 1;
+  barcodeDetector = null;
+
   if(controls && typeof controls.stop === 'function'){
     controls.stop();
   }
@@ -288,7 +380,7 @@ function stopScanner(message=''){
   if(video.srcObject){
     video.srcObject = null;
   }
-  video.pause();
+  try{ video.pause(); }catch(_e){}
 
   stopBtn.disabled = true;
   startBtn.disabled = false;
@@ -296,7 +388,12 @@ function stopScanner(message=''){
 }
 
 async function requestRearCameraStream(){
-  const preferredConstraints = [
+  const isiPhone = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+  const preferredConstraints = isiPhone ? [
+    { video: { facingMode: { exact: 'environment' } }, audio: false },
+    { video: { facingMode: { ideal: 'environment' } }, audio: false },
+    { video: true, audio: false }
+  ] : [
     { video: { facingMode: { ideal: 'environment' } }, audio: false },
     { video: { facingMode: 'environment' }, audio: false },
     { video: true, audio: false }
@@ -321,11 +418,40 @@ async function requestRearCameraStream(){
   throw lastError || new Error('Unable to access camera.');
 }
 
+function waitForVideoReady(el){
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const done = () => { if(!settled){ settled = true; cleanup(); resolve(); } };
+    const fail = (err) => { if(!settled){ settled = true; cleanup(); reject(err); } };
+    const onLoaded = async () => {
+      try{
+        await el.play();
+        setTimeout(done, 250);
+      }catch(err){
+        fail(err);
+      }
+    };
+    const cleanup = () => {
+      el.removeEventListener('loadedmetadata', onLoaded);
+      el.removeEventListener('canplay', onLoaded);
+    };
+    el.addEventListener('loadedmetadata', onLoaded, { once: true });
+    el.addEventListener('canplay', onLoaded, { once: true });
+    setTimeout(() => {
+      if(el.readyState >= HTMLMediaElement.HAVE_METADATA){
+        onLoaded();
+      }
+    }, 50);
+    setTimeout(() => fail(new Error('Video stream timed out.')), 5000);
+  });
+}
+
 function scannerErrorMessage(error){
   if(!error) return 'Camera failed. Check permissions and try again.';
   if(error.name === 'NotAllowedError') return 'Camera permission was denied. Allow camera access and try again.';
   if(error.name === 'NotFoundError') return 'No camera was found on this device.';
   if(error.name === 'NotReadableError') return 'Camera is busy in another app or browser tab.';
   if(error.name === 'OverconstrainedError') return 'Camera settings were not supported. Please try again.';
+  if(error.message && /timed out/i.test(error.message)) return 'Camera started but did not stay active. Please try again.';
   return 'Camera failed. Check permissions and try again.';
 }

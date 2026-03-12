@@ -58,6 +58,12 @@
         <input type="checkbox" id="strictToggle">
         <span>Strict mode (treat ambiguous as Avoid)</span>
       </label>
+      <label class="field-label" for="languageSelect">Display language</label>
+      <select id="languageSelect" class="select-field">
+        <option value="en">English preferred</option>
+        <option value="auto">Original label language</option>
+      </select>
+      <p id="sourceRegionNote" class="hint"></p>
       <button id="forceRefreshBtn">Force data refresh</button>
     </section>
 
@@ -73,6 +79,7 @@
       </ul>
       <p id="aboutVersion" class="version-note"></p>
       <p class="version-note">Release notes and fixes are tracked in <code>CHANGELOG.md</code>.</p>
+      <p class="version-note">Current catalog source: global Open Food Facts database.</p>
     </section>
   </main>
 

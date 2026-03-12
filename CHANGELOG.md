@@ -2,6 +2,24 @@
 
 All notable changes to AG Checker should be recorded here.
 
+## [1.2.0] - 2026-03-12
+### Added
+- Display language setting with English-preferred and original-label modes.
+- Visible note in Settings and About clarifying that product data comes from the global Open Food Facts catalog.
+- Native BarcodeDetector camera scanning path when supported by the browser.
+
+### Changed
+- Product names and ingredient text now prefer English fields from Open Food Facts when English mode is selected.
+- Barcode scanning now uses a more Safari-friendly camera startup flow and prefers the rear camera more aggressively on iPhone/iPad.
+- Scanner now waits for the video stream to be ready before decoding and falls back more gracefully between scan engines.
+
+### Fixed
+- Improved iPhone Safari behavior where the camera permission prompt appears, the stream flashes on, and then the scanner fails.
+
+# Changelog
+
+All notable changes to AG Checker should be recorded here.
+
 ## [1.1.1] - 2026-03-12
 ### Added
 - Global footer shown throughout the app with authorship, version, attribution, and a short reminder.
