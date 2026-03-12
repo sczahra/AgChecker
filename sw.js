@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ag-app-shell-v1';
+const CACHE_NAME = 'ag-app-shell-v1.1.0';
 const ASSETS = [
   '/',
   '/index.html',
@@ -7,8 +7,11 @@ const ASSETS = [
   '/js/db.js',
   '/js/rules.js',
   '/js/off.js',
+  '/js/version.js',
   '/rules.json',
   '/manifest.webmanifest',
+  '/CHANGELOG.md',
+  '/README.md',
   '/icons/icon-192.png',
   '/icons/icon-512.png'
 ];
@@ -25,12 +28,10 @@ self.addEventListener('activate', (e)=>{
 
 self.addEventListener('fetch', (e)=>{
   const url = new URL(e.request.url);
-  // App shell: network-first for JSON rules, cache-first for static
   if(ASSETS.includes(url.pathname)){
     e.respondWith(caches.match(e.request).then(r=> r || fetch(e.request)));
     return;
   }
-  // Offline fallback
   e.respondWith(
     fetch(e.request).catch(()=> caches.match(e.request))
   );

@@ -11,7 +11,10 @@
 </head>
 <body>
   <header>
-    <h1>Alpha‑Gal Checker</h1>
+    <div>
+      <h1>Alpha-Gal Checker</h1>
+      <div id="versionText" class="version-text"></div>
+    </div>
     <div id="status"></div>
   </header>
 
@@ -42,7 +45,8 @@
         <button id="stopScanBtn" disabled>Stop</button>
       </div>
       <video id="video" muted playsinline></video>
-      <div id="scanStatus"></div>
+      <div id="scanStatus" class="scan-status"></div>
+      <p class="hint">Safari note: if live scanning does not start, check camera permission and try again. Search and pasted barcodes still work.</p>
     </section>
 
     <section id="settings" class="tabpanel">
@@ -58,13 +62,17 @@
     </section>
 
     <section id="about" class="tabpanel">
-      <p>This personal tool helps check foods for potential Alpha‑gal (mammalian) ingredients.</p>
+      <p>This personal tool helps check foods for potential Alpha-Gal (mammalian) ingredients.</p>
+      <p><strong>Made by someone with Alpha Gal, for everyone else with Alpha Gal!</strong></p>
       <ul>
-        <li>Data source: <a href="https://world.openfoodfacts.org/" target="_blank">Open Food Facts</a> (ODbL)</li>
-        <li>No accounts, no cloud — runs on your device. Works offline after first load.</li>
+        <li>Created by <a href="https://github.com/sczahra" target="_blank" rel="noopener noreferrer">Seth Zahra</a></li>
+        <li>Project source: <a href="https://github.com/sczahra/AgChecker" target="_blank" rel="noopener noreferrer">GitHub repository</a></li>
+        <li>Data source: <a href="https://world.openfoodfacts.org/" target="_blank" rel="noopener noreferrer">Open Food Facts</a> (ODbL)</li>
+        <li>No accounts, no cloud - runs on your device. Works offline after first load.</li>
         <li>Not medical advice. Always confirm labels and follow your clinician’s guidance.</li>
       </ul>
-      <p>Made for personal use. © You.</p>
+      <p id="aboutVersion" class="version-note"></p>
+      <p class="version-note">Release notes and fixes are tracked in <code>CHANGELOG.md</code>.</p>
     </section>
   </main>
 
