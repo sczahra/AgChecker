@@ -1,0 +1,55 @@
+{
+  "version": 1,
+  "strict_dairy": false,
+  "avoid": [
+    "gelatin",
+    "e441",
+    "lard",
+    "tallow",
+    "suet",
+    "beef",
+    "pork",
+    "veal",
+    "lamb",
+    "goat",
+    "venison",
+    "collagen",
+    "beef broth",
+    "pork broth",
+    "animal shortening",
+    "bovine",
+    "porcine"
+  ],
+  "caution": [
+    "glycerin",
+    "glycerol",
+    "mono- and diglycerides",
+    "monoglycerides",
+    "diglycerides",
+    "stearate",
+    "stearic",
+    "natural flavors",
+    "enzymes",
+    "rennet",
+    "shortening",
+    "vitamin d3",
+    "magnesium stearate",
+    "calcium stearate"
+  ],
+  "dairy_aliases": [
+    "milk",
+    "whey",
+    "casein",
+    "butter",
+    "milk fat",
+    "ghee",
+    "cream",
+    "cheese"
+  ],
+  "alias_map": {
+    "e441": "gelatin",
+    "bovine collagen": "collagen",
+    "porcine collagen": "collagen",
+    "animal fat": "tallow"
+  }
+}
