@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Alpha-Gal Checker</title>
+  <link rel="manifest" href="/manifest.webmanifest">
+  <meta name="theme-color" content="#0d9488">
+  <link rel="apple-touch-icon" href="/icons/icon-192.png">
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Alpha-Gal Checker</h1>
+      <div id="versionText" class="version-text"></div>
+    </div>
+    <div id="status"></div>
+  </header>
+
+  <main>
+    <section class="card">
+      <h2>Search</h2>
+      <div class="search-row">
+        <input id="searchInput" placeholder="Type product name or paste barcode…" inputmode="search" />
+        <button id="searchBtn">Search</button>
+      </div>
+      <div id="searchLoading" class="loading-indicator" hidden><span class="spinner" aria-hidden="true"></span><span>Searching…</span></div>
+      <p class="hint">Tip: USB barcode scanners paste codes here. On iPhone, use the Scan tab below.</p>
+    </section>
+
+    <section class="tabs">
+      <button class="tab active" data-tab="results">Results</button>
+      <button class="tab" data-tab="scan">Scan</button>
+      <button class="tab" data-tab="history">History</button>
+      <button class="tab" data-tab="settings">Settings</button>
+      <button class="tab" data-tab="about">About</button>
+    </section>
+
+    <section id="results" class="tabpanel active">
+      <ul id="resultsList" class="results"></ul>
+    </section>
+
+    <section id="scan" class="tabpanel">
+      <div class="card scan-card">
+        <h2>Barcode tools</h2>
+        <p class="hint">Live camera scanning is still experimental and may not work yet on some devices and browsers, including iPhone browsers and older Mac browsers. If camera scan fails, use barcode paste or upload a barcode photo instead.</p>
+        <div class="scan-controls">
+          <button id="startScanBtn">Start Camera</button>
+          <button id="stopScanBtn" disabled>Stop</button>
+        </div>
+        <video id="video" muted playsinline></video>
+        <div id="scanStatus" class="scan-status"></div>
+      </div>
+
+      <div class="card scan-card">
+        <h2>Paste a barcode</h2>
+        <div class="search-row">
+          <input id="barcodeInput" placeholder="Paste UPC/EAN barcode here…" inputmode="numeric" />
+          <button id="barcodeLookupBtn">Use Barcode</button>
+        </div>
+        <p class="hint">This is the most reliable option if you already have a scanner, typed code, or copied barcode number.</p>
+      </div>
+
+      <div class="card scan-card">
+        <h2>Upload a barcode image</h2>
+        <input id="barcodeImageInput" class="file-input" type="file" accept="image/*" capture="environment" />
+        <button id="barcodeImageBtn">Read Barcode From Image</button>
+        <p id="imageScanStatus" class="scan-status"></p>
+        <p class="hint">Tip: crop close to the barcode with good lighting and as little glare as possible.</p>
+      </div>
+    </section>
+
+
+    <section id="history" class="tabpanel">
+      <div class="card">
+        <div class="history-header">
+          <h2>Saved & previous searches</h2>
+          <button id="clearHistoryBtn" class="secondary-btn">Clear history</button>
+        </div>
+        <p class="hint">Keep track of what you searched or scanned. Favorite entries to pin them for later.</p>
+        <ul id="historyList" class="history-list"></ul>
+      </div>
+    </section>
+
+    <section id="settings" class="tabpanel">
+      <label class="toggle">
+        <input type="checkbox" id="dairyToggle">
+        <span>Dairy sensitive (treat dairy as Avoid)</span>
+      </label>
+      <label class="toggle">
+        <input type="checkbox" id="strictToggle">
+        <span>Strict mode (treat ambiguous as Avoid)</span>
+      </label>
+      <button id="forceRefreshBtn">Force data refresh</button>
+    </section>
+
+    <section id="about" class="tabpanel">
+      <p>This personal tool helps check foods for potential Alpha-Gal (mammalian) ingredients.</p>
+      <p><strong>Made by someone with Alpha Gal, for everyone else with Alpha Gal!</strong></p>
+      <ul>
+        <li>Created by <a href="https://github.com/sczahra" target="_blank" rel="noopener noreferrer">Seth Zahra</a></li>
+        <li>Project source: <a href="https://github.com/sczahra/AgChecker" target="_blank" rel="noopener noreferrer">GitHub repository</a></li>
+        <li>Data source: <a href="https://world.openfoodfacts.org/" target="_blank" rel="noopener noreferrer">Open Food Facts</a> (ODbL)</li>
+        <li>No accounts, no cloud - runs on your device. Works offline after first load.</li>
+        <li>Not medical advice. Always confirm labels and follow your clinician’s guidance.</li>
+      </ul>
+      <p id="aboutVersion" class="version-note"></p>
+      <p class="version-note">Release notes and fixes are tracked in <code>CHANGELOG.md</code>.</p>
+    </section>
+  </main>
+
+  <template id="resultItemTpl">
+    <li class="result-item">
+      <div class="badge" data-verdict="">?</div>
+      <div class="meta">
+        <div class="name"></div>
+        <div class="sub"></div>
+        <div class="ingredients"></div>
+        <details class="why">
+          <summary>Why?</summary>
+          <ul class="reasons"></ul>
+        </details>
+      </div>
+    </li>
+  </template>
+
+
+  <footer class="app-footer">
+    <p>Made by someone with Alpha Gal, for everyone else with Alpha Gal.</p>
+    <p id="footerVersionLine">AG Checker • Created by <a href="https://github.com/sczahra" target="_blank" rel="noopener noreferrer">Seth Zahra</a> • Data from <a href="https://world.openfoodfacts.org/" target="_blank" rel="noopener noreferrer">Open Food Facts</a></p>
+    <p class="footer-note">Always confirm ingredient labels and follow your clinician's guidance.</p>
+  </footer>
+
+  <script src="https://unpkg.com/dexie@4.0.7/dist/dexie.min.js"></script>
+  <script type="module" src="/js/app.js"></script>
+</body>
+</html>
